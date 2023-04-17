@@ -118,6 +118,10 @@ def train_model(train_dataloader, val_dataloader, model, loss_fn, optimizer, epo
         model.eval()
         val_accuracy = test_loop(val_dataloader, model, loss_fn, method='val')
         val_accuracies.append(val_accuracy)
+        
+        # Save model 
+        torch.save(model.state_dict(), \
+                   '../saved_models/epoch=' + str(t) + '_accuracy=' + str(100*val_accuracy)[0:4] + '%')
     end = timer()
     print(f'Processing time: {end-start:.2f}s.') 
 
