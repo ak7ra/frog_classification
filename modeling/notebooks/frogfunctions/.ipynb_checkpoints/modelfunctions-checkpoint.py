@@ -9,6 +9,7 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 import random
 from timeit import default_timer as timer
+from sklearn.manifold import TSNE
 
 def setup_seed(seed):
     torch_manual_seed(seed)
@@ -16,6 +17,80 @@ def setup_seed(seed):
     np.random.seed(seed)
     random.seed(seed)
     cudnn.deterministic = True
+    
+def make_tsne(dataloader, model, epoch):
+    
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    
+    labels = []
+    for batch, (X, y) in enumerate(dataloader):
+
+        images = X.to(device)
+        labels += y
+
+        output = model.forward(images)
+
+        current_outputs = output.cpu().detach().numpy()
+
+        try:
+            outputs = np.concatenate([outputs, current_outputs], axis=0)
+        except NameError:
+            outputs = current_outputs
+        
+    tsne = TSNE(n_components=2).fit_transform(outputs)
+
+    TSNE_2D(tsne, epoch, labels, scale=True)
+            
+def scale_to_01_range(x):
+    # compute the distribution range
+    value_range = (np.max(x) - np.min(x))
+ 
+    # move the distribution so that it starts from zero
+    # by extracting the minimal value from all its values
+    starts_from_zero = x - np.min(x)
+ 
+    # make the distribution fit [0; 1] by dividing by its range
+    return starts_from_zero / value_range
+ 
+def TSNE_2D(tsne, epoch, labels, scale=True):
+    
+    tx = tsne[:, 0]
+    ty = tsne[:, 1]
+
+    if scale:
+        tx = scale_to_01_range(tx)
+        ty = scale_to_01_range(ty)
+    
+    colors_per_class = {0:0, 1 : 1, 2: 2, 3:3, 4:4, 5:5, 6:6}
+    
+
+    fig = plt.figure(figsize=(8,8))
+    ax = fig.add_subplot(111)
+    
+    class_to_name = {0: 'Upper Amazon tree frog', 
+                                  1: 'Demerara Falls tree frog',
+                                  2: 'Chirping Robber frog',
+                                  3: "Vanzolini's Amazon frog",
+                                  4: "South American common toad",
+                                  5: "Peters' dwarf frog",
+                                  6: 'Background'}
+
+    # for every class, we'll add a scatter plot separately
+    for label in colors_per_class:
+        
+        indices = [i for i, l in enumerate(labels) if l == label]
+
+        current_tx = np.take(tx, indices)
+        current_ty = np.take(ty, indices)
+
+        ax.scatter(current_tx, current_ty, label=class_to_name[label]) 
+
+    ax.legend(loc='best')
+    
+    fig.savefig("tsne_epoch"+str(epoch)+".png")
+
+    # finally, show the plot
+    plt.show()
     
 def train_loop(dataloader, model, loss_fn, optimizer):
     # Define device 
@@ -49,7 +124,7 @@ def train_loop(dataloader, model, loss_fn, optimizer):
     # Return training accuracy
     return accuracy
 
-def test_loop(dataloader, model, loss_fn, method):
+def test_loop(dataloader, model, loss_fn, method, epoch, tsne=False):
     # Define device 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     probs = []
@@ -75,6 +150,9 @@ def test_loop(dataloader, model, loss_fn, method):
             prob = nnf.softmax(pred, dim=1)
             probs.append(pd.DataFrame(prob.cpu()))
 
+    if tsne:
+        make_tsne(dataloader, model, epoch)
+            
     # Test loss
     test_loss /= num_batches
     
@@ -100,7 +178,7 @@ def test_loop(dataloader, model, loss_fn, method):
     elif method=='prob':
         return probs
 
-def train_model(train_dataloader, val_dataloader, model, loss_fn, optimizer, epochs):
+def train_model(train_dataloader, val_dataloader, model, loss_fn, optimizer, epochs, tsne=False):
     train_accuracies = [] 
     val_accuracies = []  
 
@@ -116,7 +194,7 @@ def train_model(train_dataloader, val_dataloader, model, loss_fn, optimizer, epo
     
         # Validation
         model.eval()
-        val_accuracy = test_loop(val_dataloader, model, loss_fn, method='val')
+        val_accuracy = test_loop(val_dataloader, model, loss_fn, method='val', epoch=t+1, tsne=tsne)
         val_accuracies.append(val_accuracy)
         
         # Save model 
