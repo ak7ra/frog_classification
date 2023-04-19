@@ -88,7 +88,7 @@ def TSNE_2D(tsne, epoch, labels, scale=True):
     ax.legend(loc='best')
     
     fig.savefig("tsne_epoch"+str(epoch)+".png")
-
+    
     # finally, show the plot
     plt.show()
     
@@ -197,9 +197,6 @@ def train_model(train_dataloader, val_dataloader, model, loss_fn, optimizer, epo
         val_accuracy = test_loop(val_dataloader, model, loss_fn, method='val', epoch=t+1, tsne=tsne)
         val_accuracies.append(val_accuracy)
         
-        # Save model 
-        torch.save(model.state_dict(), \
-                   '../saved_models/epoch=' + str(t) + '_accuracy=' + str(100*val_accuracy)[0:4] + '%')
     end = timer()
     print(f'Processing time: {end-start:.2f}s.') 
 
