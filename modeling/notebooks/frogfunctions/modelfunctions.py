@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 import random
 from timeit import default_timer as timer
 from sklearn.manifold import TSNE
+import os
 
 def setup_seed(seed):
     torch_manual_seed(seed)
@@ -66,6 +67,7 @@ def TSNE_2D(tsne, epoch, labels, scale=True):
 
     fig = plt.figure(figsize=(8,8))
     ax = fig.add_subplot(111)
+    # ax = fig.add_axes([0.1, 0.1, 0.5, 0.75])
     
     class_to_name = {0: 'Upper Amazon tree frog', 
                                   1: 'Demerara Falls tree frog',
@@ -85,9 +87,15 @@ def TSNE_2D(tsne, epoch, labels, scale=True):
 
         ax.scatter(current_tx, current_ty, label=class_to_name[label]) 
 
-    ax.legend(loc='best')
+    ax.legend(bbox_to_anchor=[1.5, 1])
     
-    fig.savefig("tsne_epoch"+str(epoch)+".png")
+    plt.title("Epoch "+ str(epoch))
+    
+    if os.path.exists(os.getcwd()+"/tsne_outputs/"):
+        fig.savefig(os.getcwd()+"/tsne_outputs/tsne_epoch"+str(epoch)+".png", bbox_inches="tight")
+    else:
+        os.mkdir(os.getcwd()+"/tsne_outputs/")
+        fig.savefig(os.getcwd()+"/tsne_outputs/tsne_epoch"+str(epoch)+".png", bbox_inches="tight")
     
     # finally, show the plot
     plt.show()
